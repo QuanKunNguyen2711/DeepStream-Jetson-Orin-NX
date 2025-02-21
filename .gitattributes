@@ -1,0 +1,2 @@
+model/detection_rtdetr_res50_best_v3_b4_fp16.engine filter=lfs diff=lfs merge=lfs -text
+model/detection_rtdetr_res50_epoch_431_v3.onnx filter=lfs diff=lfs merge=lfs -text
