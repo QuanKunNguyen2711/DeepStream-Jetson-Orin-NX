@@ -1,0 +1,20 @@
+data:
+  name: dataset_name
+  task: detection
+  format: local # local, huggingface
+  path:
+    root: /home/quannguyen/nota/datasets # dataset root
+    train:
+      image: images/train # directory for training images
+      label: labels/train # directory for training labels
+    valid:
+      image: images/val   # directory for valid images
+      label: labels/val   # directory for valid labels
+    test:
+      image: images/test  # directory for test images
+      label: labels/test  # directory for test labels
+    pattern:
+      image: "frame_([0-9]+)\\.jpg"
+      label: "frame_([0-9]+)\\.txt"
+  id_mapping: ['bicycle', 'bus', 'car', 'motorbike', 'pedestrian', 'truck', 'van']  # class names
+  pallete: ~

@@ -1,0 +1,58 @@
+augmentation:
+  train:
+    -
+      name: resize
+      size: [640, 640]
+      interpolation: bilinear
+      max_size: ~
+      resize_criteria: ~
+
+    -
+      name: randomhorizontalflip
+      p: 0.5
+
+    -
+      name: hsvjitter
+      h_mag: 0.1
+      s_mag: 0.2
+      v_mag: 0.2
+
+    -
+      name: colorjitter
+      brightness: 0.3
+      contrast: 0.3
+      saturation: 0.3
+      hue: 0.1
+      p: 0.5
+  
+    -
+      name: randomerasing
+      p: 0.5
+      scale: [0.01, 0.222]
+      ratio: [0.3, 3.3]
+      value: 114
+      inplace: False
+
+    -
+      name: totensor
+      pixel_range: 1.0
+    
+    -
+      name: normalize
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
+
+  inference:
+    - 
+      name: resize
+      size: [640, 640]
+      interpolation: bilinear
+      max_size: ~
+      resize_criteria: ~
+    -
+      name: totensor
+      pixel_range: 1.0
+    -
+      name: normalize
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]

@@ -55,9 +55,8 @@
 [property]
 gpu-id=0
 net-scale-factor=0.0039215697906911373
-model-engine-file=deepstream_python_apps/apps/my-deepstream/model/detection_rtdetr_res50_best_v3_b4_fp16.engine
+model-engine-file=/home/nvidia/model/rt_detr_50/detection_rtdetr_res50_best_v3_b4_fp16.engine
 labelfile-path=/home/nvidia/deepstream_python_apps/apps/my-deepstream/model/labels.txt
-force-implicit-batch-dim=1
 batch-size=1
 network-mode=1
 num-detected-classes=7
@@ -68,7 +67,7 @@ output-blob-names=output
 #scaling-filter=0
 #scaling-compute-hw=0
 parse-bbox-func-name=NvDsInferParseCustomBbox
-custom-lib-path=/home/nvidia/deepstream_python_apps/apps/my-deepstream/custom_parser/build/libcustom_parser.so
+custom-lib-path=/home/nvidia/custom_parser/build/libcustom_parser.so
 cluster-mode=4
 #cluster-mode=2
 maintain-aspect-ratio=0

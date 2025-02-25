@@ -45,6 +45,8 @@ import cv2
 import numpy as np
 from collections import defaultdict
 import threading
+from queue import Queue
+import threading
 
 no_display = False
 silent = False
@@ -213,8 +215,8 @@ def write_traffic_volume(stream_id, obj_id, vehicle):
             vehicle.get('lane_id', ''),
             vehicle.get('direction', '')
         ])
-        
-    
+  
+  
 def point_line_distance(px, py, x1, y1, x2, y2):
     line_len_sq = (x2 - x1) ** 2 + (y2 - y1) ** 2
     if line_len_sq == 0:
@@ -272,6 +274,7 @@ class TrackedVehicles:
     def __init__(self):
         self.data = defaultdict(dict)
         self.locks = defaultdict(threading.Lock)
+        self.last_cleanup = defaultdict(int)
 
     def add_vehicle(self, stream_id, obj_id, entry):
         with self.locks[stream_id]:
@@ -297,7 +300,11 @@ class TrackedVehicles:
                 del self.data[stream_id][obj_id]
 
     def cleanup_expired(self, stream_id, current_frame, max_age=30):
+        if current_frame - self.last_cleanup[stream_id] < 30:
+            return
+        
         with self.locks[stream_id]:
+            self.last_cleanup[stream_id] = current_frame
             expired_ids = [
                 obj_id 
                 for obj_id, vehicle in self.data[stream_id].items()
@@ -334,12 +341,12 @@ def nvtracker_src_pad_buffer_probe(pad, info, u_data):
             stream_id = f"stream{frame_meta.pad_index}"
             current_frame_num = frame_meta.frame_num
 
-            if stream_id in STOP_LINES:
-                draw_lines(frame_meta, STOP_LINES[stream_id], is_stop_lines=True)
-            if stream_id in DIRECTION_LINES:
-                draw_lines(frame_meta, DIRECTION_LINES[stream_id], is_stop_lines=False)
-            if stream_id in ROIS:
-                draw_rois(frame_meta, ROIS, stream_id)
+            # if stream_id in STOP_LINES:
+            #     draw_lines(frame_meta, STOP_LINES[stream_id], is_stop_lines=True)
+            # if stream_id in DIRECTION_LINES:
+            #     draw_lines(frame_meta, DIRECTION_LINES[stream_id], is_stop_lines=False)
+            # if stream_id in ROIS:
+            #     draw_rois(frame_meta, ROIS, stream_id)
                 
         except StopIteration:
             break
@@ -355,6 +362,7 @@ def nvtracker_src_pad_buffer_probe(pad, info, u_data):
             PGIE_CLASS_ID_BICYCLE: 0,
             PGIE_CLASS_ID_PEDESTRIAN: 0
         }
+        
         while l_obj is not None:
             try:
                 # Casting l_obj.data to pyds.NvDsObjectMeta
@@ -464,7 +472,7 @@ def nvtracker_src_pad_buffer_probe(pad, info, u_data):
             except StopIteration:
                 break
             
-        # tracked_vehicles.cleanup_expired(stream_id, current_frame_num)
+        tracked_vehicles.cleanup_expired(stream_id, current_frame_num)
         # Update frame rate through this probe
         global perf_data
         perf_data.update_fps(stream_id)
@@ -688,11 +696,11 @@ def main(args, requested_pgie=None, config=None, disable_probe=False):
     tracker.link(nvstreamdemux)
     ##creating demux src
     
-    # # RTSP Server Setup
-    # rtsp_port_num = 8554
-    # server = GstRtspServer.RTSPServer.new()
-    # server.props.service = str(rtsp_port_num)
-    # server.attach(None)
+    # RTSP Server Setup
+    rtsp_port_num = 8554
+    server = GstRtspServer.RTSPServer.new()
+    server.props.service = str(rtsp_port_num)
+    server.attach(None)
 
     for i in range(number_sources):
         # nvstreamdemux -> queue -> nvvidconv -> nvosd -> (if Jetson) nvegltransform -> nveglgl
@@ -709,7 +717,7 @@ def main(args, requested_pgie=None, config=None, disable_probe=False):
         sink.set_property('sync', 0)  # Disable sync to avoid waiting for clock
         sink.set_property('async', 0)  # Disable async to avoid internal queues
         sink.set_property('qos', 0)  # Disable QoS to prevent buffer drops due to deadlines
-        # sink = Gst.ElementFactory.make("fakesink", f"fake-video-renderer_{i}")
+        sink = Gst.ElementFactory.make("fakesink", f"fake-video-renderer_{i}")
         pipeline.add(sink)
 
         # creating queue
@@ -818,10 +826,16 @@ def main(args, requested_pgie=None, config=None, disable_probe=False):
 
 if __name__ == "__main__":
     # stream_paths = parse_args()
+    # stream_paths = [
+    #     "file:///home/nvidia/deepstream_python_apps/apps/my-deepstream/videos/trimmed_DongKhoi_MacThiBuoi.h264",
+    #     "file:///home/nvidia/deepstream_python_apps/apps/my-deepstream/videos/trimmed_RachBungBinh_NguyenThong_1.h264",
+    #     "file:///home/nvidia/deepstream_python_apps/apps/my-deepstream/videos/trimmed_TranHungDao_NguyenVanCu.h264",
+    #     "file:///home/nvidia/deepstream_python_apps/apps/my-deepstream/videos/trimmed_TranKhacChan_TranQuangKhai.h264"
+    # ]
     stream_paths = [
-        "file:///home/nvidia/deepstream_python_apps/apps/my-deepstream/videos/trimmed_DongKhoi_MacThiBuoi.h264",
-        "file:///home/nvidia/deepstream_python_apps/apps/my-deepstream/videos/trimmed_RachBungBinh_NguyenThong_1.h264",
-        "file:///home/nvidia/deepstream_python_apps/apps/my-deepstream/videos/trimmed_TranHungDao_NguyenVanCu.h264",
-        "file:///home/nvidia/deepstream_python_apps/apps/my-deepstream/videos/trimmed_TranKhacChan_TranQuangKhai.h264"
+        "file:///home/nvidia/Videos/trimmed_videos/trimmed_DongKhoi_MacThiBuoi.h264",
+        "file:///home/nvidia/Videos/trimmed_videos/trimmed_RachBungBinh_NguyenThong_1.h264",
+        "file:///home/nvidia/Videos/trimmed_videos/trimmed_TranHungDao_NguyenVanCu.h264",
+        "file:///home/nvidia/Videos/trimmed_videos/trimmed_TranKhacChan_TranQuangKhai.h264"
     ]
     sys.exit(main(stream_paths))
