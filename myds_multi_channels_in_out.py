@@ -703,22 +703,22 @@ def main(args, requested_pgie=None, config=None, disable_probe=False):
     server.attach(None)
 
     for i in range(number_sources):
-        # nvstreamdemux -> queue -> nvvidconv -> nvosd -> (if Jetson) nvegltransform -> nveglgl
-        # Creating EGLsink
-        if is_aarch64():
-            print("Creating nv3dsink \n")
-            sink = make_element("nv3dsink", i)
-            if not sink:
-                sys.stderr.write(" Unable to create nv3dsink \n")
-        else:
-            print("Creating EGLSink \n")
-            sink = make_element("nveglglessink", i)
+        # # nvstreamdemux -> queue -> nvvidconv -> nvosd -> (if Jetson) nvegltransform -> nveglgl
+        # # Creating EGLsink
+        # if is_aarch64():
+        #     print("Creating nv3dsink \n")
+        #     sink = make_element("nv3dsink", i)
+        #     if not sink:
+        #         sys.stderr.write(" Unable to create nv3dsink \n")
+        # else:
+        #     print("Creating EGLSink \n")
+        #     sink = make_element("nveglglessink", i)
 
-        sink.set_property('sync', 0)  # Disable sync to avoid waiting for clock
-        sink.set_property('async', 0)  # Disable async to avoid internal queues
-        sink.set_property('qos', 0)  # Disable QoS to prevent buffer drops due to deadlines
-        sink = Gst.ElementFactory.make("fakesink", f"fake-video-renderer_{i}")
-        pipeline.add(sink)
+        # sink.set_property('sync', 0)  # Disable sync to avoid waiting for clock
+        # sink.set_property('async', 0)  # Disable async to avoid internal queues
+        # sink.set_property('qos', 0)  # Disable QoS to prevent buffer drops due to deadlines
+        # sink = Gst.ElementFactory.make("fakesink", f"fake-video-renderer_{i}")
+        # pipeline.add(sink)
 
         # creating queue
         queue = make_element("queue", i)
@@ -744,54 +744,54 @@ def main(args, requested_pgie=None, config=None, disable_probe=False):
         # connect  queue -> nvvidconv -> nvosd -> nveglgl
         queue.link(nvvideoconvert)
         nvvideoconvert.link(nvdsosd)
-        nvdsosd.link(sink)
+        # nvdsosd.link(sink)
         
-        # # nvosd -> nvvidconv_postosd -> caps -> encoder -> rtppay -> udpsink
-        # nvvidconv_postosd = Gst.ElementFactory.make("nvvideoconvert", f"convertor_postosd_{i}")
-        # pipeline.add(nvvidconv_postosd)
+        # nvosd -> nvvidconv_postosd -> caps -> encoder -> rtppay -> udpsink
+        nvvidconv_postosd = Gst.ElementFactory.make("nvvideoconvert", f"convertor_postosd_{i}")
+        pipeline.add(nvvidconv_postosd)
         
-        # # Create a caps filter
-        # caps = Gst.ElementFactory.make("capsfilter", f"filter_{i}")
-        # pipeline.add(caps)
-        # caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM), format=I420"))
+        # Create a caps filter
+        caps = Gst.ElementFactory.make("capsfilter", f"filter_{i}")
+        pipeline.add(caps)
+        caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM), format=I420"))
         
-        # encoder = Gst.ElementFactory.make("nvv4l2h264enc", f"encoder_{i}")
-        # pipeline.add(encoder)
-        # encoder.set_property('bitrate', 4000000)
+        encoder = Gst.ElementFactory.make("nvv4l2h264enc", f"encoder_{i}")
+        pipeline.add(encoder)
+        encoder.set_property('bitrate', 4000000)
         
-        # if is_aarch64():
-        #     encoder.set_property('preset-level', 1)
-        #     encoder.set_property('insert-sps-pps', 1)
+        if is_aarch64():
+            encoder.set_property('preset-level', 1)
+            encoder.set_property('insert-sps-pps', 1)
                 
-        # # Make the payload-encode video into RTP packets
-        # rtppay = Gst.ElementFactory.make("rtph264pay", f"rtppay_{i}")
-        # pipeline.add(rtppay)
+        # Make the payload-encode video into RTP packets
+        rtppay = Gst.ElementFactory.make("rtph264pay", f"rtppay_{i}")
+        pipeline.add(rtppay)
         
-        # # Make the UDP sink
-        # updsink_port_num = 5400 + i
-        # udpsink = Gst.ElementFactory.make("udpsink", f"udpsink_{i}")
-        # pipeline.add(udpsink)
+        # Make the UDP sink
+        updsink_port_num = 5400 + i
+        udpsink = Gst.ElementFactory.make("udpsink", f"udpsink_{i}")
+        pipeline.add(udpsink)
         
-        # udpsink.set_property('host', '224.224.255.255')
-        # udpsink.set_property('port', updsink_port_num)
-        # udpsink.set_property('async', 0)
-        # udpsink.set_property('sync', 0)
+        udpsink.set_property('host', '224.224.255.255')
+        udpsink.set_property('port', updsink_port_num)
+        udpsink.set_property('async', 0)
+        udpsink.set_property('sync', 0)
         
-        # # Link elements
-        # nvdsosd.link(nvvidconv_postosd)
-        # nvvidconv_postosd.link(caps)
-        # caps.link(encoder)
-        # encoder.link(rtppay)
-        # rtppay.link(udpsink)
+        # Link elements
+        nvdsosd.link(nvvidconv_postosd)
+        nvvidconv_postosd.link(caps)
+        caps.link(encoder)
+        encoder.link(rtppay)
+        rtppay.link(udpsink)
 
-        # # Create RTSP Mount Point
-        # factory = GstRtspServer.RTSPMediaFactory.new()
-        # factory.set_launch(f"( udpsrc name=pay0 port={5400 + i} buffer-size=524288 "
-        #                   f"caps=\"application/x-rtp, media=video, clock-rate=90000, "
-        #                   f"encoding-name=H264, payload=96 \" )")
-        # factory.set_shared(True)
-        # server.get_mount_points().add_factory(f"/ds{i}", factory)
-        # print(f"RTSP Stream available at rtsp://localhost:{rtsp_port_num}/ds{i}")
+        # Create RTSP Mount Point
+        factory = GstRtspServer.RTSPMediaFactory.new()
+        factory.set_launch(f"( udpsrc name=pay0 port={5400 + i} buffer-size=524288 "
+                          f"caps=\"application/x-rtp, media=video, clock-rate=90000, "
+                          f"encoding-name=H264, payload=96 \" )")
+        factory.set_shared(True)
+        server.get_mount_points().add_factory(f"/ds{i}", factory)
+        print(f"RTSP Stream available at rtsp://localhost:{rtsp_port_num}/ds{i}")
     
 
     print("Linking elements in the Pipeline \n")
@@ -825,13 +825,6 @@ def main(args, requested_pgie=None, config=None, disable_probe=False):
 
 
 if __name__ == "__main__":
-    # stream_paths = parse_args()
-    # stream_paths = [
-    #     "file:///home/nvidia/deepstream_python_apps/apps/my-deepstream/videos/trimmed_DongKhoi_MacThiBuoi.h264",
-    #     "file:///home/nvidia/deepstream_python_apps/apps/my-deepstream/videos/trimmed_RachBungBinh_NguyenThong_1.h264",
-    #     "file:///home/nvidia/deepstream_python_apps/apps/my-deepstream/videos/trimmed_TranHungDao_NguyenVanCu.h264",
-    #     "file:///home/nvidia/deepstream_python_apps/apps/my-deepstream/videos/trimmed_TranKhacChan_TranQuangKhai.h264"
-    # ]
     stream_paths = [
         "file:///home/nvidia/Videos/trimmed_videos/trimmed_DongKhoi_MacThiBuoi.h264",
         "file:///home/nvidia/Videos/trimmed_videos/trimmed_RachBungBinh_NguyenThong_1.h264",
